@@ -84,3 +84,48 @@ El proyecto fue formateado utilizando:
 
 ```bash
 dart format .
+```
+
+El análisis del proyecto se realizó mediante:
+
+```bash
+flutter analyze
+```
+
+Resultado:
+
+```text
+No issues found!
+```
+
+## Capturas de pantalla
+
+Las siguientes capturas muestran diferentes estados y funcionalidades de la aplicación.
+
+### Captura 1 - Inicio
+
+![Captura 1](screenshots/Capturauno.JPG)
+
+### Captura 2 - Progreso
+
+![Captura 2](screenshots/Capturados.JPG)
+
+### Captura 3 - Día completado
+
+![Captura 3](screenshots/Capturatres.JPG)
+
+### Captura 4 - Modo enfoque
+
+![Captura 4](screenshots/Capturacuatro.JPG)
+
+## Reflexión
+
+Durante el desarrollo de la aplicación se comprendió el uso de `StatefulWidget` y `setState()` para manejar información que cambia durante la ejecución de la aplicación.
+
+El uso de variables de estado permitió actualizar diferentes elementos de la interfaz cuando el usuario realiza acciones, como marcar un hábito, cambiar la meta, activar el modo enfoque, guardar una nota o reiniciar el día.
+
+También se comprendió la importancia de utilizar getters para calcular información derivada del estado y mantener el código más organizado.
+
+## Autor
+
+Marcela Pineda
