@@ -1,6 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
+import 'servicios/firestore_service.dart';
+import 'historial_screen.dart';
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
 
-void main() {
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
   runApp(const MyApp());
 }
 
@@ -29,6 +38,8 @@ class PanelHabitos extends StatefulWidget {
 }
 
 class _PanelHabitosState extends State<PanelHabitos> {
+  final FirestoreService _firestoreService = FirestoreService();
+
   // ------------------------------------------------------------
   // HÁBITOS FIJOS
   // ------------------------------------------------------------
@@ -48,14 +59,27 @@ class _PanelHabitosState extends State<PanelHabitos> {
   late List<bool> _cumplidos;
 
   int _meta = 3;
-
   bool _enfoque = false;
-
   String _nota = '';
 
   final TextEditingController _notaCtrl = TextEditingController();
 
   static const int _metaInicial = 3;
+
+  // Evita guardar datos antes de terminar la carga inicial.
+  bool _datosCargados = false;
+
+  // ------------------------------------------------------------
+  // FECHA ACTUAL
+  // ------------------------------------------------------------
+
+  String get _fechaActual {
+    final ahora = DateTime.now();
+
+    return '${ahora.year}-'
+        '${ahora.month.toString().padLeft(2, '0')}-'
+        '${ahora.day.toString().padLeft(2, '0')}';
+  }
 
   // ------------------------------------------------------------
   // INICIALIZACIÓN
@@ -66,6 +90,72 @@ class _PanelHabitosState extends State<PanelHabitos> {
     super.initState();
 
     _cumplidos = List<bool>.filled(_habitos.length, false);
+    _cargarDia();
+  }
+
+  // ------------------------------------------------------------
+  // CARGAR DATOS DESDE FIRESTORE
+  // ------------------------------------------------------------
+
+  Future<void> _cargarDia() async {
+    try {
+      final datos = await _firestoreService.cargarDia(_fechaActual);
+
+      if (!mounted) return;
+
+      if (datos != null) {
+        setState(() {
+          final lista = datos['cumplidos'];
+
+          if (lista is List && lista.length == _habitos.length) {
+            _cumplidos = lista.map((valor) => valor == true).toList();
+          }
+
+          final metaGuardada = datos['meta'];
+          if (metaGuardada is num) {
+            _meta = metaGuardada.toInt().clamp(1, _habitos.length).toInt();
+          }
+
+          _enfoque = datos['enfoque'] == true;
+          _nota = datos['nota'] as String? ?? '';
+          _notaCtrl.text = _nota;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error al cargar hábitos desde Firestore: $e');
+    } finally {
+      _datosCargados = true;
+    }
+  }
+
+  // ------------------------------------------------------------
+  // GUARDAR DATOS EN FIRESTORE
+  // ------------------------------------------------------------
+
+  Future<void> _guardarEnFirestore() async {
+    if (!_datosCargados) return;
+
+    try {
+      await _firestoreService.guardarDia(
+        fecha: _fechaActual,
+        cumplidos: _cumplidos,
+        meta: _meta,
+        enfoque: _enfoque,
+        nota: _nota,
+      );
+
+      debugPrint('Datos guardados correctamente en Firestore.');
+    } catch (e) {
+      debugPrint('Error al guardar datos en Firestore: $e');
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No se pudieron guardar los datos en Firebase.'),
+          ),
+        );
+      }
+    }
   }
 
   // ------------------------------------------------------------
@@ -124,6 +214,8 @@ class _PanelHabitosState extends State<PanelHabitos> {
     setState(() {
       _cumplidos[index] = !_cumplidos[index];
     });
+
+    _guardarEnFirestore();
   }
 
   // ------------------------------------------------------------
@@ -134,6 +226,8 @@ class _PanelHabitosState extends State<PanelHabitos> {
     setState(() {
       _meta = valor.round();
     });
+
+    _guardarEnFirestore();
   }
 
   // ------------------------------------------------------------
@@ -144,6 +238,8 @@ class _PanelHabitosState extends State<PanelHabitos> {
     setState(() {
       _enfoque = valor;
     });
+
+    _guardarEnFirestore();
   }
 
   // ------------------------------------------------------------
@@ -154,6 +250,15 @@ class _PanelHabitosState extends State<PanelHabitos> {
     setState(() {
       _nota = _notaCtrl.text.trim();
     });
+
+    _guardarEnFirestore();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Nota guardada.'),
+        duration: Duration(seconds: 2),
+      ),
+    );
   }
 
   // ------------------------------------------------------------
@@ -163,15 +268,13 @@ class _PanelHabitosState extends State<PanelHabitos> {
   void _reiniciarDia() {
     setState(() {
       _cumplidos = List<bool>.filled(_habitos.length, false);
-
       _nota = '';
-
       _meta = _metaInicial;
-
       _enfoque = false;
-
       _notaCtrl.clear();
     });
+
+    _guardarEnFirestore();
   }
 
   // ------------------------------------------------------------
@@ -186,6 +289,20 @@ class _PanelHabitosState extends State<PanelHabitos> {
           'Hábitos — Cumplidos: $_totalCumplidos / ${_habitos.length}',
         ),
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.history),
+            tooltip: 'Historial',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const HistorialScreen(),
+                ),
+              );
+            },
+          ),
+        ],
       ),
 
       body: ListView(
@@ -212,6 +329,7 @@ class _PanelHabitosState extends State<PanelHabitos> {
           // ------------------------------------------------------
           // PROGRESO
           // ------------------------------------------------------
+
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16),
@@ -228,7 +346,6 @@ class _PanelHabitosState extends State<PanelHabitos> {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-
                       Text(
                         '${(_progreso * 100).round()}%',
                         style: const TextStyle(
@@ -270,6 +387,7 @@ class _PanelHabitosState extends State<PanelHabitos> {
           // ------------------------------------------------------
           // META DEL DÍA
           // ------------------------------------------------------
+
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16),
@@ -314,9 +432,7 @@ class _PanelHabitosState extends State<PanelHabitos> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(Icons.check_circle, color: Colors.green),
-
                           SizedBox(width: 6),
-
                           Text(
                             'Meta alcanzada',
                             style: TextStyle(fontWeight: FontWeight.bold),
@@ -334,6 +450,7 @@ class _PanelHabitosState extends State<PanelHabitos> {
           // ------------------------------------------------------
           // MODO ENFOQUE
           // ------------------------------------------------------
+
           Card(
             child: SwitchListTile(
               title: const Text(
@@ -351,6 +468,7 @@ class _PanelHabitosState extends State<PanelHabitos> {
           // ------------------------------------------------------
           // LISTA DE HÁBITOS
           // ------------------------------------------------------
+
           const Text(
             'Mis hábitos',
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
@@ -359,8 +477,6 @@ class _PanelHabitosState extends State<PanelHabitos> {
           const SizedBox(height: 8),
 
           ...List.generate(_habitos.length, (index) {
-            // En modo enfoque ocultamos
-            // los hábitos ya completados.
             if (_enfoque && _cumplidos[index]) {
               return const SizedBox.shrink();
             }
@@ -387,6 +503,7 @@ class _PanelHabitosState extends State<PanelHabitos> {
           // ------------------------------------------------------
           // NOTA DEL DÍA
           // ------------------------------------------------------
+
           const Text(
             'Nota del día',
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
@@ -429,9 +546,7 @@ class _PanelHabitosState extends State<PanelHabitos> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Icon(Icons.note, color: Colors.green),
-
                   const SizedBox(width: 10),
-
                   Expanded(
                     child: Text(
                       _nota.isEmpty ? 'Sin nota' : _nota,
@@ -448,6 +563,7 @@ class _PanelHabitosState extends State<PanelHabitos> {
           // ------------------------------------------------------
           // REINICIAR
           // ------------------------------------------------------
+
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "676710347996",
+    "project_id": "lab-habitos-marcela-pineda",
+    "storage_bucket": "lab-habitos-marcela-pineda.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:676710347996:android:55688d61f5ee7ead173019",
+        "android_client_info": {
+          "package_name": "com.example.lab_habitos_marcela_pineda"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDbaA49Ci16gm8PkzwTU_XzHXvQPJwO1a0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

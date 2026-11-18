@@ -10,7 +10,7 @@ La aplicación permite marcar los hábitos completados y actualizar el progreso 
 - Dart
 - StatefulWidget
 - setState()
-- Material 3
+- Material 3m
 
 ## Funcionalidades
 
